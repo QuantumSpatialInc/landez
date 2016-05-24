@@ -3,7 +3,7 @@ import re
 import logging
 import shutil
 from gettext import gettext as _
-from util import flip_y
+from landez.util import flip_y
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,8 @@ class Cache(object):
         self.extension = kwargs.get('extension', '.png')
         self._scheme = 'tms'
 
-    def tile_file(self, (z, x, y)):
+    def tile_file(self, zxy):
+        z, x, y = zxy
         tile_dir = os.path.join("%s" % z, "%s" % x)
         y = flip_y(y, z)
         tile_name = "%s%s" % (y, self.extension)
@@ -23,13 +24,16 @@ class Cache(object):
     def scheme(self):
         return self._scheme
 
-    def read(self, (z, x, y)):
+    def read(self, zxy):
+        z, x, y = zxy
         raise NotImplementedError
 
-    def save(self, body, (z, x, y)):
+    def save(self, body, zxy):
+        z, x, y = zxy
         raise NotImplementedError
 
-    def remove(self, (z, x, y)):
+    def remove(self, zxy):
+        z, x, y = zxy
         raise NotImplementedError
 
     def clean(self):
@@ -37,13 +41,16 @@ class Cache(object):
 
 
 class Dummy(Cache):
-    def read(self, (z, x, y)):
+    def read(self, zxy):
+        z, x, y = zxy
         return None
 
-    def save(self, body, (z, x, y)):
+    def save(self, body, zxy):
+        z, x, y = zxy
         pass
 
-    def remove(self, (z, x, y)):
+    def remove(self, zxy):
+        z, x, y = zxy
         pass
 
     def clean(self):
@@ -73,19 +80,22 @@ class Disk(Cache):
         assert scheme in ('wmts', 'xyz', 'tms'), "Unknown scheme %s" % scheme
         self._scheme = 'xyz' if (scheme == 'wmts') else scheme
 
-    def tile_file(self, (z, x, y)):
+    def tile_file(self, zxy):
+        z, x, y = zxy
         tile_dir = os.path.join("%s" % z, "%s" % x)
         if (self.scheme != 'xyz'):
             y = flip_y(y, z)
         tile_name = "%s%s" % (y, self.extension)
         return tile_dir, tile_name
 
-    def tile_fullpath(self, (z, x, y)):
+    def tile_fullpath(self, zxy):
+        z, x, y = zxy
         tile_dir, tile_name = self.tile_file((z, x, y))
         tile_abs_dir = os.path.join(self.folder, tile_dir)
         return os.path.join(tile_abs_dir, tile_name)
 
-    def remove(self, (z, x, y)):
+    def remove(self, zxy):
+        z, x, y = zxy
         tile_abs_uri = self.tile_fullpath((z, x, y))
         os.remove(tile_abs_uri)
         parent = os.path.dirname(tile_abs_uri)
@@ -98,14 +108,16 @@ class Disk(Cache):
             except OSError:
                 break
 
-    def read(self, (z, x, y)):
+    def read(self, zxy):
+        z, x, y = zxy
         tile_abs_uri = self.tile_fullpath((z, x, y))
         if os.path.exists(tile_abs_uri):
             logger.debug(_("Found %s") % tile_abs_uri)
             return open(tile_abs_uri, 'rb').read()
         return None
 
-    def save(self, body, (z, x, y)):
+    def save(self, body, zxy):
+        z, x, y = zxy
         tile_abs_uri = self.tile_fullpath((z, x, y))
         tile_abs_dir = os.path.dirname(tile_abs_uri)
         if not os.path.isdir(tile_abs_dir):

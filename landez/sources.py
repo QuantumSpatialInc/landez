@@ -7,10 +7,10 @@ import json
 from gettext import gettext as _
 from pkg_resources import parse_version
 import urllib
-import urllib2
-from urlparse import urlparse
+import urllib.request
+import urllib.parse
 from tempfile import NamedTemporaryFile
-from util import flip_y
+from landez.util import flip_y
 
 
 has_mapnik = False
@@ -22,7 +22,7 @@ except ImportError:
 
 
 from . import DEFAULT_TILE_FORMAT, DEFAULT_TILE_SIZE, DOWNLOAD_RETRIES
-from proj import GoogleProjection
+from landez.proj import GoogleProjection
 
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ class MBTilesReader(TileSource):
         logger.debug(_("Execute query '%s' %s") % (sql, args))
         try:
             self._cur.execute(sql, *args)
-        except (sqlite3.OperationalError, sqlite3.DatabaseError), e:
+        except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
             raise InvalidFormatError(_("%s while reading %s") % (e, self.filename))
         return self._cur
 
@@ -165,7 +165,7 @@ class TileDownloader(TileSource):
         s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
         try:
             url = self.tiles_url.format(**locals())
-        except KeyError, e:
+        except KeyError as e:
             raise DownloadError(_("Unknown keyword %s in URL") % e)
 
         logger.debug(_("Retrieve tile at %s") % url)
@@ -173,13 +173,13 @@ class TileDownloader(TileSource):
         sleeptime = 1
         while r > 0:
             try:
-                request = urllib2.Request(url)
+                request = urllib.request.Request(url)
                 for header, value in self.headers.items():
                     request.add_header(header, value)
-                stream = urllib2.urlopen(request)
+                stream = urllib.request.urlopen(request)
                 assert stream.getcode() == 200
                 return stream.read()
-            except (AssertionError, IOError), e:
+            except (AssertionError, IOError) as e:
                 logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
                 r -= 1
                 time.sleep(sleeptime)
@@ -224,10 +224,10 @@ class WMSReader(TileSource):
         url += "&bbox=%s" % bbox   # commas are not encoded
         try:
             logger.debug(_("Download '%s'") % url)
-            request = urllib2.Request(url)
+            request = urllib.request.Request(url)
             for header, value in self.headers.items():
                 request.add_header(header, value)
-            f = urllib2.urlopen(request)
+            f = urllib.request.urlopen(request)
             header = f.info().typeheader
             assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
             return f.read()
